@@ -1,6 +1,0 @@
-aiogram==3.7.*
-aiohttp
-psycopg2-binary
-boto3
-yookassa
-
