@@ -1,0 +1,58 @@
+services:
+  app:
+    command: python -m app.main
+    restart: unless-stopped
+    build:
+      context: ./app
+    env_file:
+      - .env
+    depends_on:
+      - postgres
+      - tg-bot-api
+
+    ports:
+      - "127.0.0.1:${APP_PORT:-8080}:8080"
+
+    volumes:
+      - tg-cache:/app/cache
+      # общий том для больших файлов (чтобы app мог читать локальные пути tg-bot-api)
+      - tg-bot-api-data:/var/lib/telegram-bot-api
+
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0) if urllib.request.urlopen('http://127.0.0.1:8080/healthz', timeout=3).read().startswith(b'ok') else sys.exit(1)\""]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+    mem_limit: 3g
+    cpus: "3.0"
+
+  tg-bot-api:
+    image: aiogram/telegram-bot-api:latest
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - tg-bot-api-data:/var/lib/telegram-bot-api
+    ports:
+      - "8081:8081"
+
+  postgres:
+    image: postgres:16
+    env_file:
+      - .env
+    restart: always
+    volumes:
+      - ./pgdata:/var/lib/postgresql/data
+
+volumes:
+  tg-cache:
+  tg-bot-api-data:
+
